@@ -1,0 +1,159 @@
+ToDo Liste:
+1. Verbindungsdaten einrichten
+2. HTML Gerüst
+3. Index (Navigation)
+4. Alle .php Seiten erstellen
+5. Connect Datei einbinden
+6. SQLString Variable anlegen und definieren
+7. Datenbankabfrage durchführen
+8. Ergebnis der Datenbankabfrage mit einer While Schleife ausgeben
+9. Eventuelle Unterabfrage einrichten nach dem selben Prinzip (Schritte: 6,7,8,9)
+10. schaun obs gehd
+
+Tipps:
+strtotime um Datetime aus der Datenbank schön in ein Datumsformat zu formatieren.
+implode Funktion um mehrere eventuelle where Klauseln mit einem "and" zu verbinden.
+Formatierung ist egal, Du kannst es als Tabelle oder Liste ausgeben, wie es Dir lieber ist.
+Wichtig ist nur das die Funktionen programmiert werden.
+Kommentiere möglichst jeden Schritt für die Prüfung. Wenn Du einen Fehler hast, kann Dich
+Dein Kommentar retten.
+Rekursive Funktionen können nützlich sein. Eine Funktion die sich in einer Schleife selbst
+so lange ausruft bis alle DB Einträge abgearbeitet wurden.
+Überlege Dir gut welche in welcher Schleife was alles ausgeführt werden muss. So ist die
+gesamtleiste nicht nach jeder Position einer Rechnung notwendig und gehört nur am Ende.
+Häufige Fehler:
+";" vergessen,
+falsch geschriebene Tabllen oder Spaltennamen im SQL String,
+DB Name nicht eingetragen in der Verbindungsdatei,
+
+
+Syntax:
+
+1. Verbindungsdaten einrichten:
+<?php
+1. DB Definieren:
+define("DB",[
+	"host" => "localhost",
+	"user" => "root",
+	"pwd" => "",
+	"name" => $DBNAME
+]);
+2. Verbindung einrichten:
+$conn = new MySQLi(DB["host"],DB["user"],DB["pwd"],DB["name"]);
+if($conn->connect_errno>0) {
+	die("Fehler im Verbindungsaufbau: " . $conn->connect_error);
+}
+$conn->set_charset("utfmb4");
+?>
+
+Aufrufen der Datei mit:
+require("inc/connection.php");
+
+2. "!-Enter"
+
+3. Navigation:
+<nav>
+    <ul>
+        <li><a href="klassen.php">Klassen</a></li>
+        <li><a href="schueler.php">Schüler</a></li>
+        <li><a href="raeume.php">Räume</a></li>
+    </ul>
+</nav>
+
+4. Navigation immer anpassen, Datei richtig betiteln, auf die richtige Verlinkung achten
+
+5. require("inc/conn.php");
+
+6. $sql= "select * from...."
+
+7. $klassen = $conn->query($sql) or die("Fehler in der Query: " . $conn->error . "<br>" . $sql);
+
+8. 
+ $klassen = $conn->query($sql) or die("Fehler in der Query: " . $conn->error . "<br>" . $sql);
+        while ($klasse = $klassen->fetch_object()) {
+            echo('
+            <li>' . $klasse->Bezeichnung . ' ist im Raum ' . $klasse->bezRaum . 'untergebracht; der Name des KVs ist ' . $klasse->Vorname . ' ' . $klasse->Nachname . '
+                <ul>
+            ');}
+
+9.
+wie 8. allerdings, innerhalb von 8. (Schleife in der Schleife)
+
+PHP Datumsformat:
+
+<li>' . date("d.m.Y, H:i",strtotime($eintrag->Eintragezeitpunkt)) . ' Uhr: ' . $e . '</li>
+
+10. Rekursive Funktionen:
+
+a: Funktion definieren:
+
+function zeigeForum($fid=null) {
+	global $conn; //$conn ist eine Variable, die außerhalb der Funktion definiert wurde; damit sie auch hier verwendbar ist, muss man sie entweder "global machen" oder die Variable (das Objekt) auf eine andere Art und Weise übergeben
+	
+	if(is_null($fid)) {
+		$fid_string = " IS NULL";
+	}
+	else {
+		$fid_string = "=".$fid;
+	}
+	
+	$sql = "
+		SELECT
+			tbl_eintraege.IDEintrag,
+			tbl_eintraege.Eintrag,
+			tbl_eintraege.Eintragezeitpunkt,
+			tbl_user.Vorname,
+			tbl_user.Nachname
+		FROM tbl_eintraege
+		LEFT JOIN tbl_user ON tbl_eintraege.FIDUser=tbl_user.IDUser
+		WHERE(
+			tbl_eintraege.FIDEintrag" . $fid_string . "
+		)
+		ORDER BY tbl_eintraege.Eintragezeitpunkt ASC
+	";
+	$eintraege = $conn->query($sql) or die("Fehler in der Query: " . $conn->error . "<br>" . $sql);
+	echo('<ul>');
+	while($eintrag = $eintraege->fetch_object()) {
+		echo('
+			<li>
+				' . $eintrag->Vorname . ' ' . $eintrag->Nachname . ' schrieb am ' . date("d.m.Y",strtotime($eintrag->Eintragezeitpunkt)) . ' um '  . date("H:i",strtotime($eintrag->Eintragezeitpunkt)) . ' Uhr:<br>' . $eintrag->Eintrag
+		);
+		
+		zeigeForum($eintrag->IDEintrag); //Rekursion
+			
+		echo('
+			</li>
+		');
+	}
+	echo('</ul>');}
+
+b: Funktion aufrufen:
+
+        <?php
+		zeigeForum();
+		?>
+11. Label Suchfelder:
+	<form method="post">
+        <label>
+            Nachname:
+            <input type="text" name="nn" value="<?php echo($_POST['nn']); ?>">
+        </label>
+        <label>
+            Vorname:
+            <input type="text" name="vn" value="<?php echo($_POST['vn']); ?>">
+        </label>
+    </form>
+12. Das Ergebnis richtig verarbeiten:
+ 	if (count($_POST)>0) {
+        if(strlen($_POST["nn"])>0) {
+            $arr[] = "Nachname like '%" . $_POST["nn"] . "%'";
+        }
+        if(strlen($_POST["vn"])>0) {
+            $arr[] = "Vorname like '%" . $_POST["vn"] . "%'";
+        }
+    }
+    if (count($arr)>0) {
+        $where = "Where( " . implode(" and", $arr) . ")";
+    } else {
+        $where = "";
+    }
